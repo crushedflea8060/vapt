@@ -7,7 +7,7 @@ pub fn main() -> iced::Result {
         .title(Installer::title)
         // We set the window config here.
         .window(iced::window::Settings {
-            size: Size::new(450.0, 720.0),
+            size: Size::new(450.0, 770.0),
             ..Default::default()
         })
         
@@ -30,6 +30,7 @@ enum Cmd { // was named command, but had to be changed because of a conflict wit
     Update,
     Upgrade,
     List,
+    Desc,
     Quit,
 }
 
@@ -51,6 +52,7 @@ impl Installer {
             Cmd::Upgrade => self.log = upgrade(),
             Cmd::List => self.log = list(),
             Cmd::Quit => std::process::exit(0),
+            Cmd::Desc => self.log = describe_package(self.package.clone()),
         }
     }
 
@@ -63,8 +65,9 @@ impl Installer {
             button("Install").on_press(Cmd::Install),
             button("Remove").on_press(Cmd::Remove),
             button("Search for Packages").on_press(Cmd::Search),
-            button("Purge Unused Dependencies").on_press(Cmd::PurgeUnused),
+            button("Get Description").on_press(Cmd::Desc),
             text("Buttons below this line will ignore your input, be mindful of what you click."),
+            button("Purge Unused Dependencies").on_press(Cmd::PurgeUnused),
             button("Upgrade System").on_press(Cmd::Upgrade),
             button("Update System").on_press(Cmd::Update),
             button("Generate a txt file of installed packages").on_press(Cmd::List),
@@ -208,4 +211,23 @@ fn list() -> String {
     } else {
         format!("apt failed with exit code: {:?}", output.status.code())
     }
+}
+
+fn describe_package(package: String) -> String {
+    println!("describing {}", package.clone());
+    let output = Command::new("apt-cache")
+        .arg("search")
+        .arg("--names-only")
+        .arg(format!("^{}$", package.clone()))
+        .output()
+        .expect("Failed to execute apt command");
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let string_stdout = stdout.to_string();
+        return format!("{string_stdout}")
+    }
+    else {
+        return format!("apt failed with exit code: {:?}", output.status.code())
+    }
+
 }
