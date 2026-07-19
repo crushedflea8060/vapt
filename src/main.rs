@@ -7,7 +7,7 @@ pub fn main() -> iced::Result {
         .title(Installer::title)
         // We set the window config here.
         .window(iced::window::Settings {
-            size: Size::new(250.0, 300.0),
+            size: Size::new(250.0, 350.0),
             ..Default::default()
         })
         
