@@ -30,6 +30,7 @@ enum Cmd { // was named command, but had to be changed because of a conflict wit
     Update,
     Upgrade,
     List,
+    Quit,
 }
 
 impl Installer {
@@ -49,6 +50,7 @@ impl Installer {
             Cmd::Update => self.log = update(),
             Cmd::Upgrade => self.log = upgrade(),
             Cmd::List => self.log = list(),
+            Cmd::Quit => std::process::exit(0),
         }
     }
 
@@ -66,6 +68,7 @@ impl Installer {
             button("Upgrade System").on_press(Cmd::Upgrade),
             button("Update System").on_press(Cmd::Update),
             button("Generate a txt file of installed packages").on_press(Cmd::List),
+            button("Quit").on_press(Cmd::Quit),
             text("The program may become unresponsive while running commands. Do not close the program as it could cause issues with your system."),
             text(format!("Output Log: {}", self.log)),
         ].spacing(20)
