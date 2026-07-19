@@ -21,7 +21,7 @@ struct Installer {
 }
 
 #[derive(Debug, Clone)]
-enum CMD { // was named command, but had to be changed because of a conflict with the command module in std::process.
+enum Cmd { // was named command, but had to be changed because of a conflict with the command module in std::process.
     Remove,
     Install,
     PackageChange(String),
@@ -39,35 +39,35 @@ impl Installer {
     }
 
 
-    fn update(&mut self, message: CMD) { // we are using our enum as a sort of control center and outputting the results of the functions into the log.
+    fn update(&mut self, message: Cmd) { // we are using our enum as a sort of control center and outputting the results of the functions into the log.
         match message {
-            CMD::Install => self.log = install(self.package.clone()),
-            CMD::Remove => self.log = remove(self.package.clone()),
-            CMD::PackageChange(new_package) => self.package = new_package,
-            CMD::PurgeUnused => self.log = purge(),
-            CMD::Search => self.log = search(self.package.clone()),
-            CMD::Update => self.log = update(),
-            CMD::Upgrade => self.log = upgrade(),
-            CMD::List => self.log = list(),
+            Cmd::Install => self.log = install(self.package.clone()),
+            Cmd::Remove => self.log = remove(self.package.clone()),
+            Cmd::PackageChange(new_package) => self.package = new_package,
+            Cmd::PurgeUnused => self.log = purge(),
+            Cmd::Search => self.log = search(self.package.clone()),
+            Cmd::Update => self.log = update(),
+            Cmd::Upgrade => self.log = upgrade(),
+            Cmd::List => self.log = list(),
         }
     }
 
-    fn view(&self) -> Element<'_, CMD> { //the view function is essentially the layout.
+    fn view(&self) -> Element<'_, Cmd> { //the view function is essentially the layout.
         center_x(
             scrollable(column![
             text("APT Package Search: packages.debian.org/nl/"),
-            text(format!("Package Name: {}", &self.package)),
-            text_input("", &self.package).on_input(CMD::PackageChange),
-            button("Install").on_press(CMD::Install),
-            button("Remove").on_press(CMD::Remove),
-            button("Search for Packages").on_press(CMD::Search),
-            button("Purge Unused Dependencies").on_press(CMD::PurgeUnused),
+            text(format!("Package Name: {}", self.package)),
+            text_input("", &self.package).on_input(Cmd::PackageChange),
+            button("Install").on_press(Cmd::Install),
+            button("Remove").on_press(Cmd::Remove),
+            button("Search for Packages").on_press(Cmd::Search),
+            button("Purge Unused Dependencies").on_press(Cmd::PurgeUnused),
             text("Buttons below this line will ignore your input, be mindful of what you click."),
-            button("Upgrade System").on_press(CMD::Upgrade),
-            button("Update System").on_press(CMD::Update),
-            button("Generate a txt file of installed packages").on_press(CMD::List),
-            text("The program may become unresponsive while running commands, please be patient. Do not close the program as it could cause issues with your system."),
-            text(format!("Output Log: {}", &self.log)),
+            button("Upgrade System").on_press(Cmd::Upgrade),
+            button("Update System").on_press(Cmd::Update),
+            button("Generate a txt file of installed packages").on_press(Cmd::List),
+            text("The program may become unresponsive while running commands. Do not close the program as it could cause issues with your system."),
+            text(format!("Output Log: {}", self.log)),
         ].spacing(20)
             .width(Fill)                       // Forces the column to span full width
             .align_x(Alignment::Center))
@@ -88,15 +88,15 @@ fn install(package: String) -> String //we're running apt install and telling th
         .output()
         .expect("Failed to execute apt command");
     if output.status.success() {
-        return format!("Package installed successfully!")
+        "Package installed successfully!".to_string()
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         
         // Check the trace to confirm it's a missing package error
         if stderr.contains("Unable to locate package") {
-            return format!("Error: The package does not exist.")
+            return "Error: The package does not exist.".to_string()
         }
-        return format!("APT failed with exit code: {:?}", output.status.code())
+        format!("APT failed with exit code: {:?}", output.status.code())
     }
 }
 fn remove(package: String) -> String // we're essentially just running apt remove. I didn't include purge as there is already a separate button. 
@@ -111,15 +111,15 @@ fn remove(package: String) -> String // we're essentially just running apt remov
         .output()
         .expect("Failed to execute apt command");
     if output.status.success() {
-        return format!("Package removed successfully!")
+        "Package removed successfully!".to_string()
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         
         // Check the trace to confirm it's a missing package error
         if stderr.contains("Unable to locate package") {
-            return format!("Error: The package does not exist.")
+            return "Error: The package does not exist.".to_string()
         }
-        return format!("APT failed with exit code: {:?}", output.status.code())
+        format!("APT failed with exit code: {:?}", output.status.code())
     }
 }
 fn purge() -> String // we're running apt autoremove --purge -y to remove unused packages
@@ -133,9 +133,9 @@ fn purge() -> String // we're running apt autoremove --purge -y to remove unused
         .output()
         .expect("Failed to execute apt command");
     if output.status.success() {
-        return format!("Packages purged successfully!")
+        "Packages purged successfully!".to_string()
     } else {
-        return format!("APT failed with exit code: {:?}", output.status.code())
+        format!("APT failed with exit code: {:?}", output.status.code())
     }
 }
 
@@ -151,12 +151,12 @@ fn search(package: String) -> String {
     if output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout);
         let string_stdout = stdout.to_string();
-        let mut package_arr = string_stdout.split("\n").map(|pack| pack.split(" - ").nth(0).unwrap_or("").trim()).collect::<Vec<&str>>();
+        let mut package_arr = string_stdout.split("\n").map(|pack| pack.split(" - ").next().unwrap_or("").trim()).collect::<Vec<&str>>();
         package_arr.sort_by_key(|s| s.len());
         let package_list = package_arr.join("\n");
-        return format!("Search results:\n{}", package_list);
+        format!("Search results:\n{}", package_list)
     } else {
-        return format!("APT failed with exit code: {:?}", output.status.code())
+        format!("APT failed with exit code: {:?}", output.status.code())
     }
 }
 
@@ -169,9 +169,9 @@ fn upgrade() -> String {
         .output()
         .expect("Failed to execute apt command");
     if output.status.success() {
-        return format!("System upgraded successfully!")
+        "System upgraded successfully!".to_string()
     } else {
-        return format!("APT failed with exit code: {:?}", output.status.code())
+        format!("APT failed with exit code: {:?}", output.status.code())
     }
 }
 
@@ -183,9 +183,9 @@ fn update() -> String {
         .output()
         .expect("Failed to execute apt command");
     if output.status.success() {
-        return format!("System updated successfully!")
+        "System updated successfully!".to_string()
     } else {
-        return format!("APT failed with exit code: {:?}", output.status.code())
+        format!("APT failed with exit code: {:?}", output.status.code())
     }
 }
 
@@ -201,8 +201,8 @@ fn list() -> String {
         let string_stdout = stdout.to_string();
         let package_count = string_stdout.as_bytes().iter().filter(|&&c| c == b'\n').count();
         std::fs::write("installed_packages.txt", string_stdout).expect("Unable to write file");
-        return format!("Package list generated successfully! Check installed_packages.txt in the current directory. Total packages: {}", package_count)
+        format!("Package list generated successfully! Check installed_packages.txt in the current directory. Total packages: {}", package_count)
     } else {
-        return format!("apt failed with exit code: {:?}", output.status.code())
+        format!("apt failed with exit code: {:?}", output.status.code())
     }
 }
