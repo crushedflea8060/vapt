@@ -1,7 +1,7 @@
 //VAPT (visual apt).
 use iced::widget::{button, column, row, text, rule, text_input, scrollable};
 use std::process::{Command};
-use iced::{Element, Alignment, Fill, Size, Theme, Center, Color};
+use iced::{Element, Alignment, Fill, Size, Theme, Center};
 pub fn main() -> iced::Result {
     iced::application(Installer::default, Installer::update, Installer::view)
         .title(Installer::title)
@@ -9,7 +9,10 @@ pub fn main() -> iced::Result {
         .theme(Theme::CatppuccinMacchiato)
         .window(iced::window::Settings {
             size: Size::new(500.0, 500.0),
+            max_size: Some(Size::new(500.0, 500.0)),
+            resizable: false,
             ..Default::default()
+        
         })
         
         .run()
@@ -32,6 +35,7 @@ enum Cmd { // was named command, but had to be changed because of a conflict wit
     Upgrade,
     List,
     Desc,
+    File,
 }
 
 impl Installer {
@@ -52,23 +56,23 @@ impl Installer {
             Cmd::Upgrade => self.log = upgrade(),
             Cmd::List => self.log = list(),
             Cmd::Desc => self.log = describe_package(self.package.clone()),
+            Cmd::File => self.package = grab_file(),
         }
     }
 
     fn view(&self) -> Element<'_, Cmd> { //the view function is essentially the layout.
+        
         let installer_buttons = row![
             button("+").on_press(Cmd::Install),
             button("-").on_press(Cmd::Remove),
             button("?").on_press(Cmd::Search),
-            button("Desc").on_press(Cmd::Desc)
+            button("Desc").on_press(Cmd::Desc),
+            button("File").on_press(Cmd::File),
         ].spacing(10)
         .align_y(Center);
-        let divider = rule::horizontal(2.0).style(|_theme: &iced::Theme| rule::Style {
-            color: Color::WHITE,
-            fill_mode: rule::FillMode::Full, // Fills the line completely across layout boundaries
-            radius: 0.0.into(),             // Sharp corners for the rule line
-            snap: true,                     // Snaps line position cleanly onto pixel grids
-        });
+        
+        let divider = rule::horizontal(2.0);
+        
         let system_buttons = row![
         button("Purge").on_press(Cmd::PurgeUnused),
         button("Upgrade").on_press(Cmd::Upgrade),
@@ -76,13 +80,15 @@ impl Installer {
         button("PKG Log").on_press(Cmd::List),
         ].spacing(10).align_y(Center);
 
+
+        //Main Area
         scrollable(column![
-        text_input("", &self.package).on_input(Cmd::PackageChange),
+        text_input("", &self.package).on_input(Cmd::PackageChange).padding([10,15]),
         installer_buttons,
         divider,
         text("System"),
         system_buttons,
-        text(format!("Output Log: {}", self.log)),
+        text(format!("Output Log: {}", self.log),),
         ].spacing(20)
         .width(Fill)                       // Forces the column to span full width
         .align_x(Alignment::Center))
@@ -235,3 +241,28 @@ fn describe_package(package: String) -> String {
     }
 
 }
+use rfd::AsyncFileDialog;
+
+fn grab_file() -> String
+{
+    let homedir = match std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")) {
+        Ok(path) => std::path::PathBuf::from(path),
+        Err(_) => return "Error".to_string(),
+    };
+
+    let future = async {
+        let file_option = AsyncFileDialog::new()
+            .set_directory(&homedir) 
+            .pick_file()
+            .await;
+        if let Some(handle) = file_option {
+            // Convert Path to Lossy String or standard String safely
+            handle.path().to_string_lossy().into_owned()
+        } else {
+            "".to_string()
+        }    
+    };
+    pollster::block_on(future)
+
+}
+
