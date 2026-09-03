@@ -1,5 +1,5 @@
 //VAPT (visual apt).
-use iced::widget::{button, column, row, text, rule, text_input, scrollable};
+use iced::widget::{button, column, row, text, rule, text_input, scrollable, container};
 use std::process::{Command};
 use iced::{Element, Alignment, Fill, Size, Theme, Center};
 pub fn main() -> iced::Result {
@@ -83,9 +83,10 @@ impl Installer {
 
         //Main Area
         scrollable(column![
-        text_input("", &self.package).on_input(Cmd::PackageChange).padding([10,15]),
+        container(text("VAPT - Visual APT").size(20)).padding(10),
+        container(text_input("", &self.package).on_input(Cmd::PackageChange)).padding(20),
         installer_buttons,
-        divider,
+        container(divider).padding(10),
         text("System"),
         system_buttons,
         text(format!("Output Log: {}", self.log),),
