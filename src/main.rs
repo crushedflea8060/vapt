@@ -1,13 +1,14 @@
 //VAPT (visual apt).
-use iced::widget::{button, column, text,  text_input, center_x, scrollable};
-use std::process::Command;
-use iced::{Element, Alignment, Fill, Size};
+use iced::widget::{button, column, row, text, rule, text_input, scrollable};
+use std::process::{Command};
+use iced::{Element, Alignment, Fill, Size, Theme, Center, Color};
 pub fn main() -> iced::Result {
     iced::application(Installer::default, Installer::update, Installer::view)
         .title(Installer::title)
         // We set the window config here.
+        .theme(Theme::CatppuccinMacchiato)
         .window(iced::window::Settings {
-            size: Size::new(450.0, 770.0),
+            size: Size::new(500.0, 500.0),
             ..Default::default()
         })
         
@@ -31,7 +32,6 @@ enum Cmd { // was named command, but had to be changed because of a conflict wit
     Upgrade,
     List,
     Desc,
-    Quit,
 }
 
 impl Installer {
@@ -51,35 +51,43 @@ impl Installer {
             Cmd::Update => self.log = update(),
             Cmd::Upgrade => self.log = upgrade(),
             Cmd::List => self.log = list(),
-            Cmd::Quit => std::process::exit(0),
             Cmd::Desc => self.log = describe_package(self.package.clone()),
         }
     }
 
     fn view(&self) -> Element<'_, Cmd> { //the view function is essentially the layout.
-        center_x(
-            scrollable(column![
-            text("APT Package Search: packages.debian.org/nl/"),
-            text(format!("Package Name: {}", self.package)),
-            text_input("", &self.package).on_input(Cmd::PackageChange),
-            button("Install").on_press(Cmd::Install),
-            button("Remove").on_press(Cmd::Remove),
-            button("Search for Packages").on_press(Cmd::Search),
-            button("Get Description").on_press(Cmd::Desc),
-            text("Buttons below this line will ignore your input, be mindful of what you click."),
-            button("Purge Unused Dependencies").on_press(Cmd::PurgeUnused),
-            button("Upgrade System").on_press(Cmd::Upgrade),
-            button("Update System").on_press(Cmd::Update),
-            button("Generate a txt file of installed packages").on_press(Cmd::List),
-            button("Quit").on_press(Cmd::Quit),
-            text("The program may become unresponsive while running commands. Do not close the program as it could cause issues with your system."),
-            text(format!("Output Log: {}", self.log)),
+        let installer_buttons = row![
+            button("+").on_press(Cmd::Install),
+            button("-").on_press(Cmd::Remove),
+            button("?").on_press(Cmd::Search),
+            button("Desc").on_press(Cmd::Desc)
+        ].spacing(10)
+        .align_y(Center);
+        let divider = rule::horizontal(2.0).style(|_theme: &iced::Theme| rule::Style {
+            color: Color::WHITE,
+            fill_mode: rule::FillMode::Full, // Fills the line completely across layout boundaries
+            radius: 0.0.into(),             // Sharp corners for the rule line
+            snap: true,                     // Snaps line position cleanly onto pixel grids
+        });
+        let system_buttons = row![
+        button("Purge").on_press(Cmd::PurgeUnused),
+        button("Upgrade").on_press(Cmd::Upgrade),
+        button("Update").on_press(Cmd::Update),
+        button("PKG Log").on_press(Cmd::List),
+        ].spacing(10).align_y(Center);
+
+        scrollable(column![
+        text_input("", &self.package).on_input(Cmd::PackageChange),
+        installer_buttons,
+        divider,
+        text("System"),
+        system_buttons,
+        text(format!("Output Log: {}", self.log)),
         ].spacing(20)
-            .width(Fill)                       // Forces the column to span full width
-            .align_x(Alignment::Center))
-            .height(Fill)
-        )
-            .into()
+        .width(Fill)                       // Forces the column to span full width
+        .align_x(Alignment::Center))
+        .height(Fill)
+        .into()
     }
 }
 
@@ -131,18 +139,14 @@ fn remove(package: String) -> String // we're essentially just running apt remov
 fn purge() -> String // we're running apt autoremove --purge -y to remove unused packages
 {
     println!("purging unused packages");
-    let output = Command::new("sudo")
+    Command::new("sudo")
         .arg("apt")
         .arg("autoremove")
         .arg("--purge")
         .arg("-y")
-        .output()
+        .spawn()
         .expect("Failed to execute apt command");
-    if output.status.success() {
-        "Packages purged successfully!".to_string()
-    } else {
-        format!("APT failed with exit code: {:?}", output.status.code())
-    }
+    "Purging unused packages in the background.".to_string()
 }
 
 fn search(package: String) -> String {
